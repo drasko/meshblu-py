@@ -1,12 +1,36 @@
 import requests, json
+import sys
 
 class MeshbluRestClient():
     """
         Class that implements Meshblu client API via RESTful calls
     """
 
-    def __init__(self):
-        self.url = 'http://meshblu.octoblu.com'
+    def __init__(self, url):
+        self.url = url
+        self.authUuid = ''
+        self.token = ''
+
+    def setCredentials(self, authUuid, token):
+        self.authUuid = authUuid
+        self.token = token
+
+    def getHeaders(self, authUuid, token):
+        """
+            Set-up the heades that will be sent with HTTP requests
+        """
+        if ( (authUuid is not None) and (token is None) ) or ( (authUuid is None) and (token is not None) ):
+            print "HEADERS: Wrong params - if authUuid or token is used, both values must be provided"
+            # Zero-init the params not to break the current thread - although the result will be wrong
+            authUuid = ''
+            token = ''
+
+        if (authUuid is None and token is None):
+            authUuid = self.authUuid
+            token = self.token
+
+        headers = headers = {'meshblu_auth_uuid':authUuid, 'meshblu_auth_token':token}
+        return headers
 
 
     ###
@@ -24,7 +48,7 @@ class MeshbluRestClient():
     ###
     # DEVICE
     ###
-    def addDevice(self, data):
+    def addDevice(self, payload, authUuid=None, token=None):
         """
             Payload: key=value (i.e. type=drone&color=black)
             Registers a node or device with Meshblu. Meshblu returns
@@ -33,21 +57,31 @@ class MeshbluRestClient():
             auto-generated UUID and/or token by passing your own uuid and/or
             token in the payload i.e. uuid=123&token=456.
         """
-        r = requests.post(self.url + '/devices')
+        print "PAYLOAD: ", payload
 
-    def getDevices(self, data):
-        """
-            Returns an array of device UUIDs based on key/value query criteria.
-        """
-        r = requests.get(self.url + '/devices')
+        if (authUuid is not None and token is not None):
+            headers = {'meshblu_auth_uuid':authUuid, 'meshblu_auth_token':token}
+            r = requests.post(self.url + '/devices', params=payload, headers=headers)
+        else:
+            r = requests.post(self.url + '/devices', params=payload)
         print r.text
         return r.json()
 
-    def getDevice(self, uuid):
+    def getDevices(self, payload, authUuid=None, token=None):
+        """
+            Returns an array of device UUIDs based on key/value query criteria.
+        """
+        headers = self.getHeaders(authUuid, token)
+        r = requests.get(self.url + '/devices', params=payload, headers=headers)
+        print r.text
+        return r.json()
+
+    def getDevice(self, uuid, authUuid=None, token=None):
         """
             Returns all information (except the token) of a specific device or node.
         """
-        r = requests.get(self.url + '/devices/' + uuid)
+        headers = self.getHeaders(authUuid, token)
+        r = requests.get(self.url + '/devices/' + uuid, headers=headers)
         print r.text
         return r.json()
 
@@ -60,31 +94,34 @@ class MeshbluRestClient():
         print r.text
         return r.json()
 
-    def getDeviceToken(self, uuid):
+    def getDeviceToken(self, uuid, authUuid=None, token=None):
         """
             Returns a new session token for the device
         """
-        r = requests.post(self.url + '/devices/' + uuid + '/tokens')
+        headers = self.getHeaders(authUuid, token)
+        r = requests.post(self.url + '/devices/' + uuid + '/tokens', headers=headers)
         print r.text
         return r.json()
 
-    def updateDevice(self, uuid, data):
+    def updateDevice(self, uuid, payload, authUuid=None, token=None):
         """
             Updates a node or device currently registered with Meshblu
             that you have access to update.
             You can pass any key/value pairs to update object as well as
             null to remove a propery (i.e. color=null).
         """
-        r = requests.post(self.url + '/devices/' + uuid)
+        headers = self.getHeaders(authUuid, token)
+        r = requests.post(self.url + '/devices/' + uuid, params=payload, headers=headers)
         print r.text
         return r.json()
 
-    def deleteDevice(self, uuid):
+    def deleteDevice(self, uuid, authUuid=None, token=None):
         """
             Deletes or unregisters a node or device currently registered
             with Meshblu that you have access to update.
         """
-        r = requests.delete(self.url + '/devices/' + uuid)
+        headers = self.getHeaders(authUuid, token)
+        r = requests.delete(self.url + '/devices/' + uuid, headers=headers)
         print r.text
         return r.json()
 
@@ -92,12 +129,13 @@ class MeshbluRestClient():
     ###
     # LOCALDEVICES
     ###
-    def getLocalDevices(self):
+    def getLocalDevices(self, authUuid=None, token=None):
         """
             Returns a list of unclaimed devices that are on the
             same network as the requesting resource.
         """
-        r = requests.get(self.url + '/localdevices')
+        headers = self.getHeaders(authUuid, token)
+        r = requests.get(self.url + '/localdevices', headers=headers)
         print r.text
         return r.json()
 
@@ -105,12 +143,13 @@ class MeshbluRestClient():
     ###
     # CLAIMDEVICE
     ###
-    def claimDevice(self, uuid):
+    def claimDevice(self, uuid, authUuid=None, token=None):
         """
             Adds the `meshblu_auth_uuid` as the owner of this device UUID
             allowing a user or device to claim ownership of another device.
         """
-        r = requests.put(self.url + '/claimdevice/:' + uuid)
+        headers = self.getHeaders(authUuid, token)
+        r = requests.put(self.url + '/claimdevice/:' + uuid, headers=headers)
         print r.text
         return r.json()
 
@@ -118,14 +157,15 @@ class MeshbluRestClient():
     ###
     # MYDEVICES
     ###
-    def getMyDevices(self):
+    def getMyDevices(self, authUuid=None, token=None):
         """
             Returns all information (including tokens) of all devices or
             nodes belonging to a user's UUID
             (identified with an "owner" property and user's UUID,
              i.e. "owner":"0d1234a0-1234-11e3-b09c-1234e847b2cc").
         """
-        r = requests.get(self.url + '/mydevices')
+        headers = self.getHeaders(authUuid, token)
+        r = requests.get(self.url + '/mydevices', headers=headers)
         print r.text
         return r.json()
 
@@ -133,12 +173,13 @@ class MeshbluRestClient():
     ###
     # MESSAGES
     ###
-    def sendMessage(self, data):
+    def sendMessage(self, payload, authUuid=None, token=None):
         """
             Send a message to a specific device, array of devices,
             or all devices subscribing to a UUID on the Meshblu platform.
         """
-        r = requests.post(self.url + '/messages')
+        headers = self.getHeaders(authUuid, token)
+        r = requests.post(self.url + '/messages', params=payload, headers=headers)
         print r.text
         return r.json()
 
@@ -146,11 +187,12 @@ class MeshbluRestClient():
     ###
     # EVENTS
     ###
-    def getEvents(self, uuid):
+    def getEvents(self, uuid, authUuid=None, token=None):
         """
             Returns last 10 events related to a specific device or node.
         """
-        r = requests.get(self.url + '/events' + uuid)
+        headers = self.getHeaders(authUuid, token)
+        r = requests.get(self.url + '/events' + uuid, headers=headers)
         print r.text
         return r.json()
 
@@ -158,17 +200,18 @@ class MeshbluRestClient():
     ###
     # SUBSCRIBE
     ###
-    def subscribe(self):
+    def subscribe(self, authUuid=None, token=None):
         """
             This is a streaming API that returns device/node messages as
             they are sent and received. Notice the comma at the end of
             the response. Meshblu doesn't close the stream.
         """
-        r = requests.get(self.url + '/subscribe')
+        headers = self.getHeaders(authUuid, token)
+        r = requests.get(self.url + '/subscribe', headers=headers)
         print r.text
         return r.json()
 
-    def subscribeBroadcast(self, uuid):
+    def subscribeBroadcast(self, uuid, authUuid=None, token=None):
         """
             This is a streaming API that returns device/node broadcasts
             messages as they are sent. Notice the comma at the
@@ -178,7 +221,8 @@ class MeshbluRestClient():
             The uuid/token you're authenticating with must have permissions to
             view messages from the subscribed uuid.
         """
-        r = requests.get(self.url + '/subscribe/' + uuid)
+        headers = self.getHeaders(authUuid, token)
+        r = requests.get(self.url + '/subscribe/' + uuid, headers=headers)
         print r.text
         return r.json()
 
@@ -199,15 +243,16 @@ class MeshbluRestClient():
     ###
     # DATA
     ###
-    def setData(self, uuid, data):
+    def setData(self, uuid, payload, authUuid=None, token=None):
         """
             Stores sensor data for a particular UUID. You can pass any key/value pairs.
         """
-        r = requests.post(self.url + '/data/' + uuid)
+        headers = self.getHeaders(authUuid, token)
+        r = requests.post(self.url + '/data/' + uuid, params=payload, headers=headers)
         print r.text
         return r.json()
 
-    def getData(self, uuid):
+    def getData(self, uuid, authUuid=None, token=None):
         """
             Returns last 10 data updates related to a specific device or node
             Optional query parameters include: start (time to start from),
@@ -217,6 +262,7 @@ class MeshbluRestClient():
             to the querystring. Notice the comma at the end of the response.
             Meshblu doesn't close the stream.
         """
-        r = requests.get(self.url + '/data/' + uuid)
+        headers = self.getHeaders(authUuid, token)
+        r = requests.get(self.url + '/data/' + uuid, headers=headers)
         print r.text
         return r.json()
