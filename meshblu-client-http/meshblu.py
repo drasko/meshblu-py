@@ -41,7 +41,6 @@ class MeshbluRestClient():
             Returns the Meshblu platform status.
         """
         r = requests.get(self.url + '/status')
-        print r.text
         return r.json()
 
 
@@ -57,14 +56,10 @@ class MeshbluRestClient():
             auto-generated UUID and/or token by passing your own uuid and/or
             token in the payload i.e. uuid=123&token=456.
         """
-        print "PAYLOAD: ", payload
-
         if (authUuid is not None and token is not None):
-            headers = {'meshblu_auth_uuid':authUuid, 'meshblu_auth_token':token}
-            r = requests.post(self.url + '/devices', params=payload, headers=headers)
-        else:
-            r = requests.post(self.url + '/devices', params=payload)
-        print r.text
+            payload = payload.update({'meshblu_auth_uuid':authUuid, 'meshblu_auth_token':token})
+
+        r = requests.post(self.url + '/devices', params=payload)
         return r.json()
 
     def getDevices(self, payload, authUuid=None, token=None):
@@ -73,7 +68,6 @@ class MeshbluRestClient():
         """
         headers = self.getHeaders(authUuid, token)
         r = requests.get(self.url + '/devices', params=payload, headers=headers)
-        print r.text
         return r.json()
 
     def getDevice(self, uuid, authUuid=None, token=None):
@@ -82,7 +76,6 @@ class MeshbluRestClient():
         """
         headers = self.getHeaders(authUuid, token)
         r = requests.get(self.url + '/devices/' + uuid, headers=headers)
-        print r.text
         return r.json()
 
     def getDeviceKey(self, uuid):
@@ -111,7 +104,7 @@ class MeshbluRestClient():
             null to remove a propery (i.e. color=null).
         """
         headers = self.getHeaders(authUuid, token)
-        r = requests.post(self.url + '/devices/' + uuid, params=payload, headers=headers)
+        r = requests.put(self.url + '/devices/' + uuid, params=payload, headers=headers)
         print r.text
         return r.json()
 
@@ -149,7 +142,7 @@ class MeshbluRestClient():
             allowing a user or device to claim ownership of another device.
         """
         headers = self.getHeaders(authUuid, token)
-        r = requests.put(self.url + '/claimdevice/:' + uuid, headers=headers)
+        r = requests.put(self.url + '/claimdevice/' + uuid, headers=headers)
         print r.text
         return r.json()
 
