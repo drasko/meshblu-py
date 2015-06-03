@@ -172,6 +172,8 @@ class MeshbluRestClient():
             or all devices subscribing to a UUID on the Meshblu platform.
         """
         headers = self.getHeaders(authUuid, token)
+
+        print "PAYLOAD: ", payload
         r = requests.post(self.url + '/messages', params=payload, headers=headers)
         print r.text
         return r.json()
@@ -185,7 +187,7 @@ class MeshbluRestClient():
             Returns last 10 events related to a specific device or node.
         """
         headers = self.getHeaders(authUuid, token)
-        r = requests.get(self.url + '/events' + uuid, headers=headers)
+        r = requests.get(self.url + '/events/' + uuid, headers=headers)
         print r.text
         return r.json()
 
@@ -198,26 +200,75 @@ class MeshbluRestClient():
             This is a streaming API that returns device/node messages as
             they are sent and received. Notice the comma at the end of
             the response. Meshblu doesn't close the stream.
+
+            [DD] - Subscribe is really like `/subscribe/{myUuid}`,
+            i.e. we subscribe to the "topic" which is actually `meshblu_auth_uuid`,
+            so we are logging all the messages this UUID (i.e. we) recieve
         """
         headers = self.getHeaders(authUuid, token)
-        r = requests.get(self.url + '/subscribe', headers=headers)
-        print r.text
-        return r.json()
+        r = requests.get(self.url + '/subscribe', headers=headers, stream=True)
+        for line in r.iter_lines():
+            # filter out keep-alive new lines
+            if line:
+                print line
+                #print(json.loads(line))
 
-    def subscribeBroadcast(self, uuid, authUuid=None, token=None):
+    def subscribeUuid(self, uuid, authUuid=None, token=None):
         """
-            This is a streaming API that returns device/node broadcasts
-            messages as they are sent. Notice the comma at the
-            end of the response. Meshblu doesn't close the stream.
+            This is a streaming API that returns messages recieved by device/node.
+            Notice the comma at the end of the response. Meshblu doesn't close the stream.
 
-            Note: This will stream broadcast messages from the uuid you've specified.
-            The uuid/token you're authenticating with must have permissions to
+            Note: The uuid/token you're authenticating with must have permissions to
             view messages from the subscribed uuid.
+
+            [DD] - It is like we are subscribing to the topic, where "topic" name is
+            actually UUID, and it must we and UUID of the device we claimed,
+            i.e. we must be whitelisted with this device
         """
         headers = self.getHeaders(authUuid, token)
-        r = requests.get(self.url + '/subscribe/' + uuid, headers=headers)
-        print r.text
-        return r.json()
+        r = requests.get(self.url + '/subscribe/' + uuid, headers=headers, stream=True)
+        for line in r.iter_lines():
+            # filter out keep-alive new lines
+            if line:
+                print line
+                #print(json.loads(line))
+
+    def subscribeUuidBroadcast(self, uuid, authUuid=None, token=None):
+        """
+            Subscribe to only broadcast messages sent by the subscribed device.
+        """
+        headers = self.getHeaders(authUuid, token)
+        print
+        r = requests.get(self.url + '/subscribe/' + uuid + '/broadcast', headers=headers, stream=True)
+        for line in r.iter_lines():
+            # filter out keep-alive new lines
+            if line:
+                print line
+                #print(json.loads(line))
+
+    def subscribeUuidReceived(self, uuid, authUuid=None, token=None):
+        """
+            Subscribe to only broadcast messages received by the subscribed device.
+        """
+        headers = self.getHeaders(authUuid, token)
+        r = requests.get(self.url + '/subscribe/' + uuid + '/received', headers=headers, stream=True)
+        for line in r.iter_lines():
+            # filter out keep-alive new lines
+            if line:
+                print line
+                #print(json.loads(line))
+
+    def subscribeUuidSent(self, uuid, authUuid=None, token=None):
+        """
+            Subscribe to only messages sent by the subscribed device.
+        """
+        headers = self.getHeaders(authUuid, token)
+        r = requests.get(self.url + '/subscribe/' + uuid + '/sent', headers=headers, stream=True)
+        for line in r.iter_lines():
+            # filter out keep-alive new lines
+            if line:
+                print line
+                #print(json.loads(line))
 
 
     ###
@@ -234,6 +285,18 @@ class MeshbluRestClient():
 
 
     ###
+    # WHOAMI
+    ###
+    def whoami(self):
+        """
+            Returns information about the currently authenticated device.
+        """
+        r = requests.get(self.url + '/whoami')
+        print r.text
+        return r.json()
+
+
+    ###
     # DATA
     ###
     def setData(self, uuid, payload, authUuid=None, token=None):
@@ -245,7 +308,7 @@ class MeshbluRestClient():
         print r.text
         return r.json()
 
-    def getData(self, uuid, authUuid=None, token=None):
+    def getData(self, uuid, stream=False, authUuid=None, token=None):
         """
             Returns last 10 data updates related to a specific device or node
             Optional query parameters include: start (time to start from),
@@ -256,6 +319,14 @@ class MeshbluRestClient():
             Meshblu doesn't close the stream.
         """
         headers = self.getHeaders(authUuid, token)
-        r = requests.get(self.url + '/data/' + uuid, headers=headers)
+        if (stream == True):
+            r = requests.get(self.url + '/data/' + uuid, params="stream=true", headers=headers)
+            for line in r.iter_lines():
+                # filter out keep-alive new lines
+                if line:
+                    print line
+                    #print(json.loads(line))
+        else:
+            r = requests.get(self.url + '/data/' + uuid, headers=headers)
         print r.text
         return r.json()
