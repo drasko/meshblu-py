@@ -1,5 +1,18 @@
+###
+# Meshblu HTTP RESTful Client
+#
+# Author:
+#   Drasko DRASKOVIC <drasko.draskovic@gmail.com>
+#
+# Published under MIT License
+###
+
 import requests, json
 import sys
+
+# Connection timeout in seconds for streaming connections
+# (we have to close connections after some time, otherwise we will be blocked in function forever)
+TOUT = 60
 
 class MeshbluRestClient():
     """
@@ -84,7 +97,6 @@ class MeshbluRestClient():
             or null if the device does not have a public key.
         """
         r = requests.get(self.url + '/devices/' + uuid + '/publickey')
-        print r.text
         return r.json()
 
     def getDeviceToken(self, uuid, authUuid=None, token=None):
@@ -93,7 +105,6 @@ class MeshbluRestClient():
         """
         headers = self.getHeaders(authUuid, token)
         r = requests.post(self.url + '/devices/' + uuid + '/tokens', headers=headers)
-        print r.text
         return r.json()
 
     def updateDevice(self, uuid, payload, authUuid=None, token=None):
@@ -105,7 +116,6 @@ class MeshbluRestClient():
         """
         headers = self.getHeaders(authUuid, token)
         r = requests.put(self.url + '/devices/' + uuid, params=payload, headers=headers)
-        print r.text
         return r.json()
 
     def deleteDevice(self, uuid, authUuid=None, token=None):
@@ -115,7 +125,6 @@ class MeshbluRestClient():
         """
         headers = self.getHeaders(authUuid, token)
         r = requests.delete(self.url + '/devices/' + uuid, headers=headers)
-        print r.text
         return r.json()
 
 
@@ -129,7 +138,6 @@ class MeshbluRestClient():
         """
         headers = self.getHeaders(authUuid, token)
         r = requests.get(self.url + '/localdevices', headers=headers)
-        print r.text
         return r.json()
 
 
@@ -143,7 +151,6 @@ class MeshbluRestClient():
         """
         headers = self.getHeaders(authUuid, token)
         r = requests.put(self.url + '/claimdevice/' + uuid, headers=headers)
-        print r.text
         return r.json()
 
 
@@ -159,7 +166,6 @@ class MeshbluRestClient():
         """
         headers = self.getHeaders(authUuid, token)
         r = requests.get(self.url + '/mydevices', headers=headers)
-        print r.text
         return r.json()
 
 
@@ -172,10 +178,7 @@ class MeshbluRestClient():
             or all devices subscribing to a UUID on the Meshblu platform.
         """
         headers = self.getHeaders(authUuid, token)
-
-        print "PAYLOAD: ", payload
         r = requests.post(self.url + '/messages', params=payload, headers=headers)
-        print r.text
         return r.json()
 
 
@@ -188,14 +191,13 @@ class MeshbluRestClient():
         """
         headers = self.getHeaders(authUuid, token)
         r = requests.get(self.url + '/events/' + uuid, headers=headers)
-        print r.text
         return r.json()
 
 
     ###
     # SUBSCRIBE
     ###
-    def subscribe(self, authUuid=None, token=None):
+    def subscribe(self, authUuid=None, token=None, tout=TOUT):
         """
             This is a streaming API that returns device/node messages as
             they are sent and received. Notice the comma at the end of
@@ -206,14 +208,18 @@ class MeshbluRestClient():
             so we are logging all the messages this UUID (i.e. we) recieve
         """
         headers = self.getHeaders(authUuid, token)
-        r = requests.get(self.url + '/subscribe', headers=headers, stream=True)
-        for line in r.iter_lines():
-            # filter out keep-alive new lines
-            if line:
-                print line
-                #print(json.loads(line))
+        try:
+            r = requests.get(self.url + '/subscribe', headers=headers, stream=True, timeout=tout)
+            for line in r.iter_lines():
+                # filter out keep-alive new lines
+                if line:
+                    return json.loads( line.rstrip(',') )
+        except requests.exceptions.ConnectionError as e:
+                print "Connection error:", e.message
+        except requests.exceptions.ReadTimeout as e:
+                print "ReadTimeout error:", e.message
 
-    def subscribeUuid(self, uuid, authUuid=None, token=None):
+    def subscribeUuid(self, uuid, authUuid=None, token=None, tout=TOUT):
         """
             This is a streaming API that returns messages recieved by device/node.
             Notice the comma at the end of the response. Meshblu doesn't close the stream.
@@ -226,49 +232,66 @@ class MeshbluRestClient():
             i.e. we must be whitelisted with this device
         """
         headers = self.getHeaders(authUuid, token)
-        r = requests.get(self.url + '/subscribe/' + uuid, headers=headers, stream=True)
-        for line in r.iter_lines():
-            # filter out keep-alive new lines
-            if line:
-                print line
-                #print(json.loads(line))
+        try:
+            r = requests.get(self.url + '/subscribe/' + uuid, headers=headers, stream=True, timeout=tout)
+            for line in r.iter_lines():
+                # filter out keep-alive new lines
+                if line:
+                    return json.loads( line.rstrip(',') )
+        except requests.exceptions.ConnectionError as e:
+                print "Connection error:", e.message
+        except requests.exceptions.ReadTimeout as e:
+                print "ReadTimeout error:", e.message
 
-    def subscribeUuidBroadcast(self, uuid, authUuid=None, token=None):
+
+    def subscribeUuidBroadcast(self, uuid, authUuid=None, token=None, tout=TOUT):
         """
             Subscribe to only broadcast messages sent by the subscribed device.
         """
         headers = self.getHeaders(authUuid, token)
-        print
-        r = requests.get(self.url + '/subscribe/' + uuid + '/broadcast', headers=headers, stream=True)
-        for line in r.iter_lines():
-            # filter out keep-alive new lines
-            if line:
-                print line
-                #print(json.loads(line))
+        try:
+            r = requests.get(self.url + '/subscribe/' + uuid + '/broadcast', headers=headers, stream=True, timeout=tout)
+            for line in r.iter_lines():
+                # filter out keep-alive new lines
+                if line:
+                    return json.loads( line.rstrip(',') )
+        except requests.exceptions.ConnectionError as e:
+                print "Connection error:", e.message
+        except requests.exceptions.ReadTimeout as e:
+                print "ReadTimeout error:", e.message
 
-    def subscribeUuidReceived(self, uuid, authUuid=None, token=None):
+
+    def subscribeUuidReceived(self, uuid, authUuid=None, token=None, tout=TOUT):
         """
             Subscribe to only broadcast messages received by the subscribed device.
         """
         headers = self.getHeaders(authUuid, token)
-        r = requests.get(self.url + '/subscribe/' + uuid + '/received', headers=headers, stream=True)
-        for line in r.iter_lines():
-            # filter out keep-alive new lines
-            if line:
-                print line
-                #print(json.loads(line))
+        try:
+            r = requests.get(self.url + '/subscribe/' + uuid + '/received', headers=headers, stream=True, timeout=tout)
+            for line in r.iter_lines():
+                # filter out keep-alive new lines
+                if line:
+                    return json.loads( line.rstrip(',') )
+        except requests.exceptions.ConnectionError as e:
+                print "Connection error:", e.message
+        except requests.exceptions.ReadTimeout as e:
+                print "ReadTimeout error:", e.message
 
-    def subscribeUuidSent(self, uuid, authUuid=None, token=None):
+    def subscribeUuidSent(self, uuid, authUuid=None, token=None, tout=TOUT):
         """
             Subscribe to only messages sent by the subscribed device.
         """
         headers = self.getHeaders(authUuid, token)
-        r = requests.get(self.url + '/subscribe/' + uuid + '/sent', headers=headers, stream=True)
-        for line in r.iter_lines():
-            # filter out keep-alive new lines
-            if line:
-                print line
-                #print(json.loads(line))
+        try:
+            r = requests.get(self.url + '/subscribe/' + uuid + '/sent', headers=headers, stream=True, timeout=tout)
+            for line in r.iter_lines():
+                # filter out keep-alive new lines
+                if line:
+                    return json.loads( line.rstrip(',') )
+        except requests.exceptions.ConnectionError as e:
+                print "Connection error:", e.message
+        except requests.exceptions.ReadTimeout as e:
+                print "ReadTimeout error:", e.message
 
 
     ###
@@ -280,7 +303,6 @@ class MeshbluRestClient():
             This is useful when working with the Meshblu Gateway behind a firewall.
         """
         r = requests.get(self.url + '/ipaddress')
-        print r.text
         return r.json()
 
 
@@ -292,7 +314,6 @@ class MeshbluRestClient():
             Returns information about the currently authenticated device.
         """
         r = requests.get(self.url + '/whoami')
-        print r.text
         return r.json()
 
 
@@ -305,10 +326,9 @@ class MeshbluRestClient():
         """
         headers = self.getHeaders(authUuid, token)
         r = requests.post(self.url + '/data/' + uuid, params=payload, headers=headers)
-        print r.text
         return r.json()
 
-    def getData(self, uuid, stream=False, authUuid=None, token=None):
+    def getData(self, uuid, stream=False, authUuid=None, token=None, tout=TOUT):
         """
             Returns last 10 data updates related to a specific device or node
             Optional query parameters include: start (time to start from),
@@ -320,13 +340,16 @@ class MeshbluRestClient():
         """
         headers = self.getHeaders(authUuid, token)
         if (stream == True):
-            r = requests.get(self.url + '/data/' + uuid, params="stream=true", headers=headers)
-            for line in r.iter_lines():
-                # filter out keep-alive new lines
-                if line:
-                    print line
-                    #print(json.loads(line))
+            try:
+                r = requests.get(self.url + '/data/' + uuid, params="stream=true", headers=headers, timeout=tout)
+                for line in r.iter_lines():
+                    # filter out keep-alive new lines
+                    if line:
+                        return json.loads( line.rstrip(',') )
+            except requests.exceptions.ConnectionError as e:
+                    print "Connection error:", e.message
+            except requests.exceptions.ReadTimeout as e:
+                    print "ReadTimeout error:", e.message
         else:
             r = requests.get(self.url + '/data/' + uuid, headers=headers)
-        print r.text
-        return r.json()
+            return r.json()
