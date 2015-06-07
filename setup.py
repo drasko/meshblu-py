@@ -8,9 +8,8 @@ setup(
     author = 'Drasko DRASKOVIC',
     author_email = 'drasko.draskovic@gmail.com',
     url = 'https://github.com/drasko/meshblu-py', # use the URL to the github repo
-    download_url = 'https://github.com/peterldowns/mypackage/tarball/0.1', # I'll explain this in a second
     keywords = ['iot', 'meshblu', 'http'], # arbitrary keywords
-    long_description = open('README.md').read(),
+    long_description = """Meshblu (https://github.com/octoblu/meshblu) HTTP RESTful Python client""",
     classifiers = [
           "License :: OSI Approved :: MIT License",
           "Programming Language :: Python",
